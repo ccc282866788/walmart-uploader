@@ -1,0 +1,1741 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Walmart 上品工具 — 实操控制台</title>
+<style>
+:root{
+  --blue:#0071dc;--blue-d:#005ac1;--dark:#041e42;--yellow:#ffc220;
+  --green:#00a652;--green-l:#e6f9ee;--orange:#ff8c00;--orange-l:#fff5e6;
+  --red:#e53e3e;--red-l:#fde8e8;--gray:#6c7781;--bg:#eef2f7;
+  --card:#fff;--radius:12px;--shadow:0 2px 12px rgba(4,30,66,.08);
+  --shadow-h:0 6px 28px rgba(4,30,66,.14);
+  --mono:'SF Mono',Monaco,Consolas,monospace;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:#1a1a2e;line-height:1.6}
+
+/* 顶栏 */
+.topbar{position:fixed;top:0;left:0;right:0;z-index:999;height:56px;background:var(--dark);display:flex;align-items:center;justify-content:space-between;padding:0 24px;box-shadow:0 2px 8px rgba(0,0,0,.15)}
+.topbar .brand{display:flex;align-items:center;gap:10px;color:#fff}
+.topbar .brand .dot{width:28px;height:28px;background:var(--yellow);border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:var(--dark)}
+.topbar .brand .txt{font-size:15px;font-weight:700}
+.topbar .brand .txt span{color:var(--yellow)}
+.topbar .mode-toggle{display:flex;align-items:center;gap:12px}
+.topbar .mode-toggle label{color:#aabbcc;font-size:13px;cursor:pointer}
+.topbar .switch{position:relative;width:44px;height:24px;background:#444;border-radius:12px;cursor:pointer;transition:.2s}
+.topbar .switch.on{background:var(--green)}
+.topbar .switch .knob{position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s}
+.topbar .switch.on .knob{left:22px}
+.topbar .mode-label{color:#fff;font-size:12px;font-weight:600;padding:3px 10px;border-radius:10px}
+.topbar .mode-label.demo{background:var(--orange)}
+.topbar .mode-label.live{background:var(--green)}
+
+/* 布局 */
+.layout{display:flex;margin-top:56px;min-height:calc(100vh - 56px)}
+.sidebar{width:240px;background:var(--card);box-shadow:var(--shadow);padding:20px 0;flex-shrink:0;position:sticky;top:56px;height:calc(100vh - 56px);overflow-y:auto}
+.sidebar h3{font-size:11px;text-transform:uppercase;color:var(--gray);letter-spacing:1px;padding:0 20px;margin-bottom:10px}
+.sidebar .nav-item{display:flex;align-items:center;gap:10px;padding:12px 20px;cursor:pointer;font-size:14px;color:#475569;transition:.15s;border-left:3px solid transparent}
+.sidebar .nav-item:hover{background:#f8fafc;color:var(--dark)}
+.sidebar .nav-item.active{color:var(--blue);border-left-color:var(--blue);background:var(--blue-l,#e8f2ff);font-weight:600}
+.sidebar .nav-item .num{width:22px;height:22px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;color:var(--dark)}
+.sidebar .nav-item.active .num{background:var(--blue);color:#fff}
+.sidebar .nav-item.done .num{background:var(--green);color:#fff}
+.sidebar .nav-item .icn{font-size:16px}
+
+.main{flex:1;padding:32px;max-width:calc(100% - 240px);overflow-x:hidden}
+.main .page{display:none}
+.main .page.active{display:block}
+
+/* 卡片 */
+.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);margin-bottom:24px;overflow:hidden}
+.card .card-head{padding:20px 24px 16px;border-bottom:1px solid #f0f0f0;display:flex;align-items:center;justify-content:space-between}
+.card .card-head h2{font-size:17px;color:var(--dark);display:flex;align-items:center;gap:10px}
+.card .card-head h2 .badge{font-size:11px;padding:2px 10px;border-radius:10px;font-weight:600}
+.card .card-head .badge.blue{background:#e8f2ff;color:var(--blue)}
+.card .card-head .badge.green{background:var(--green-l);color:var(--green)}
+.card .card-head .badge.orange{background:var(--orange-l);color:var(--orange)}
+.card .card-body{padding:24px}
+
+/* 表单 */
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.form-grid .full{grid-column:1/-1}
+.form-group{display:flex;flex-direction:column;gap:6px}
+.form-group label{font-size:13px;font-weight:600;color:var(--dark)}
+.form-group label .req{color:var(--red)}
+.form-group label .hint{font-weight:400;color:var(--gray);font-size:12px}
+.form-group input,.form-group select,.form-group textarea{
+  padding:10px 14px;border:1.5px solid #e0e6ed;border-radius:8px;font-size:14px;
+  font-family:inherit;transition:.2s;background:#fff;color:#1a1a2e;
+}
+.form-group input:focus,.form-group select:focus,.form-group textarea:focus{
+  outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,113,220,.12)
+}
+.form-group textarea{font-family:var(--mono);font-size:12px;resize:vertical;min-height:80px}
+.form-group .tip{font-size:11px;color:var(--gray)}
+
+/* 按钮 */
+.btn{padding:10px 24px;border:none;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;transition:.2s;display:inline-flex;align-items:center;gap:8px}
+.btn-primary{background:var(--blue);color:#fff}
+.btn-primary:hover{background:var(--blue-d)}
+.btn-primary:disabled{background:#94a3b8;cursor:not-allowed}
+.btn-success{background:var(--green);color:#fff}
+.btn-success:hover{background:#008f46}
+.btn-success:disabled{background:#94a3b8}
+.btn-warn{background:var(--orange);color:#fff}
+.btn-warn:hover{background:#e67e00}
+.btn-ghost{background:#f1f5f9;color:var(--dark);border:1.5px solid #e0e6ed}
+.btn-ghost:hover{background:#e2e8f0}
+.btn-lg{padding:14px 32px;font-size:15px}
+.btn-block{width:100%;justify-content:center}
+
+/* JSON 预览 */
+.json-viewer{background:#1e293b;color:#e2e8f0;border-radius:8px;padding:20px;font-family:var(--mono);font-size:12px;line-height:1.7;overflow-x:auto;max-height:400px;overflow-y:auto;position:relative}
+.json-viewer pre{margin:0;white-space:pre-wrap;word-break:break-all}
+.json-viewer .copy-btn{position:absolute;top:10px;right:10px;padding:4px 12px;font-size:11px;background:#334155;color:#e2e8f0;border:none;border-radius:6px;cursor:pointer}
+.json-viewer .copy-btn:hover{background:#475569}
+.json-key{color:#60a5fa}
+.json-str{color:#34d399}
+.json-num{color:#fbbf24}
+.json-bool{color:#c084fc}
+
+/* 步骤指引 */
+.step-bar{display:flex;align-items:center;gap:16px;margin-bottom:24px}
+.step-bar .step-dot{width:36px;height:36px;border-radius:50%;background:#e2e8f0;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:700;color:var(--gray);transition:.2s;flex-shrink:0}
+.step-bar .step-dot.active{background:var(--blue);color:#fff;box-shadow:0 0 0 4px #e8f2ff}
+.step-bar .step-dot.done{background:var(--green);color:#fff}
+.step-bar .step-line{flex:1;height:2px;background:#e2e8f0}
+.step-bar .step-line.done{background:var(--green)}
+
+/* 状态显示 */
+.status-box{padding:16px 20px;border-radius:8px;margin:16px 0;font-size:14px;display:flex;align-items:center;gap:10px}
+.status-box.success{background:var(--green-l);border:1px solid #b3e6c5;color:#15573a}
+.status-box.warning{background:var(--orange-l);border:1px solid #ffd9a0;color:#7a4d00}
+.status-box.error{background:var(--red-l);border:1px solid #f5b3b3;color:#7a1414}
+.status-box.info{background:#e8f2ff;border:1px solid #a3c9f5;color:#0a4d8a}
+.status-box .spinner{width:16px;height:16px;border:2px solid currentColor;border-top-color:transparent;border-radius:50%;animation:spin .6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* 日志 */
+.log-panel{background:#0a1628;border-radius:8px;padding:16px;font-family:var(--mono);font-size:12px;max-height:300px;overflow-y:auto;border:1px solid rgba(255,255,255,.06)}
+.log-panel .log-line{margin-bottom:3px;color:#94a3b8;animation:fadeIn .2s}
+.log-panel .log-line .ts{color:#475569}
+.log-panel .log-line .lvl-info{color:#60a5fa}
+.log-panel .log-line .lvl-ok{color:#34d399}
+.log-panel .log-line .lvl-warn{color:#fbbf24}
+.log-panel .log-line .lvl-err{color:#f87171}
+@keyframes fadeIn{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:translateY(0)}}
+
+/* Token 显示 */
+.token-display{display:flex;align-items:center;gap:12px;padding:14px 18px;background:#0a1628;border-radius:8px;margin:12px 0}
+.token-display .token-val{flex:1;font-family:var(--mono);font-size:12px;color:#34d399;word-break:break-all}
+.token-display .token-expiry{font-size:12px;color:#fbbf24;white-space:nowrap}
+.token-display .copy-btn{padding:6px 14px;font-size:12px;background:#334155;color:#e2e8f0;border:none;border-radius:6px;cursor:pointer}
+
+/* Feed 状态历史 */
+.history-list{margin-top:12px}
+.history-item{display:flex;align-items:center;gap:12px;padding:8px 12px;background:#f8fafc;border-radius:6px;margin-bottom:6px;font-size:12px;font-family:var(--mono)}
+.history-item .h-time{color:var(--gray)}
+.history-item .h-status{font-weight:700}
+.history-item .h-status.PROCESSED{color:var(--green)}
+.history-item .h-status.INPROGRESS{color:var(--orange)}
+.history-item .h-status.RECEIVED{color:var(--blue)}
+.history-item .h-status.ERROR{color:var(--red)}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;right:24px;z-index:10000;padding:14px 24px;border-radius:10px;font-size:14px;font-weight:600;box-shadow:var(--shadow-h);transform:translateX(120%);transition:.3s;display:flex;align-items:center;gap:10px}
+.toast.show{transform:translateX(0)}
+.toast.success{background:var(--green);color:#fff}
+.toast.error{background:var(--red);color:#fff}
+.toast.info{background:var(--blue);color:#fff}
+
+/* 图片缩略图 */
+.img-thumb{width:56px;height:56px;border:2px dashed #cbd5e1;border-radius:8px;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#f8fafc;flex-shrink:0}
+.img-thumb img{width:100%;height:100%;object-fit:cover;border-radius:6px}
+.img-thumb:empty::before{content:'📷';font-size:18px;color:#cbd5e1}
+
+/* 五点特征输入框 */
+.kf-input{padding:10px 14px;border:1.5px solid #e0e6ed;border-radius:8px;font-size:13px;font-family:inherit;transition:.2s;background:#fff}
+.kf-input:focus{outline:none;border-color:var(--blue);box-shadow:0 0 0 3px rgba(0,113,220,.1)}
+.kf-input::placeholder{color:#cbd5e1}
+
+/* 小按钮 */
+.btn-sm{padding:4px 10px;font-size:12px;border-radius:6px;display:inline-flex;align-items:center;gap:4px}
+
+/* AI 预览面板 */
+.ai-preview-block{border:1px solid #e2e8f0;border-radius:10px;padding:14px 16px;margin-bottom:12px;background:#f8fafc}
+.ai-preview-block .ap-field-name{font-weight:700;font-size:13px;color:var(--dark);margin-bottom:8px;display:flex;align-items:center;gap:6px}
+.ai-preview-block .ap-row{display:flex;gap:12px;margin-bottom:6px;font-size:12px}
+.ai-preview-block .ap-label{color:var(--gray);min-width:50px;flex-shrink:0;font-weight:600}
+.ai-preview-block .ap-orig{text-decoration:line-through;color:#94a3b8;flex:1;word-break:break-all}
+.ai-preview-block .ap-opt{color:var(--green);flex:1;word-break:break-all;font-weight:600}
+.ai-preview-block .ap-keywords{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.ai-preview-block .ap-kw-tag{background:var(--blue);color:#fff;padding:2px 8px;border-radius:10px;font-size:10px}
+.ai-preview-block .ap-notes{font-size:11px;color:var(--gray);margin-top:6px;font-style:italic}
+.ai-preview-block .ap-actions{display:flex;gap:8px;margin-top:8px}
+
+/* 变体行 */
+.variant-row{display:grid;grid-template-columns:40px 1fr 1fr 90px 1fr 1fr 40px;gap:8px;align-items:center;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:12px;margin-bottom:8px}
+.variant-row .v-num{width:28px;height:28px;border-radius:50%;background:var(--blue);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700}
+.variant-row input,.variant-row select{padding:8px 10px;border:1px solid #ddd;border-radius:6px;font-size:12px;font-family:inherit}
+.variant-row input:focus,.variant-row select:focus{outline:none;border-color:var(--blue)}
+.variant-row .v-del{width:28px;height:28px;border-radius:6px;background:var(--red);color:#fff;border:none;cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center}
+.variant-row .v-del:hover{background:#c53030}
+.variant-row .v-label{font-size:11px;color:var(--gray);display:block;margin-bottom:2px}
+
+/* 响应式 */
+@media(max-width:900px){
+  .sidebar{display:none}
+  .main{max-width:100%;padding:16px}
+  .form-grid{grid-template-columns:1fr}
+  .step-bar{display:none}
+}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:6px;height:6px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--gray)}
+</style>
+</head>
+<body>
+
+<!-- 顶栏 -->
+<div class="topbar">
+  <div class="brand">
+    <div class="dot">W</div>
+    <div class="txt">Walmart <span>上品工具</span></div>
+  </div>
+  <div class="mode-toggle">
+    <span class="mode-label demo" id="modeLabel">DEMO 模式</span>
+    <div class="switch on" id="modeSwitch" onclick="toggleMode()">
+      <div class="knob"></div>
+    </div>
+    <label onclick="toggleMode()">Demo / Live</label>
+  </div>
+</div>
+
+<div class="layout">
+  <!-- 侧边栏 -->
+  <div class="sidebar">
+    <h3>操作步骤</h3>
+    <div class="nav-item active" data-page="settings" onclick="goPage('settings')">
+      <span class="num" id="nav-0">0</span><span class="icn">⚙️</span> 设置 / 凭证
+    </div>
+    <div class="nav-item" data-page="step1" onclick="goPage('step1')">
+      <span class="num" id="nav-1">1</span><span class="icn">🔑</span> 获取 Token
+    </div>
+    <div class="nav-item" data-page="step2" onclick="goPage('step2')">
+      <span class="num" id="nav-2">2</span><span class="icn">📦</span> 构建商品
+    </div>
+    <div class="nav-item" data-page="step2b" onclick="goPage('step2b')">
+      <span class="num" id="nav-2b">🔍</span><span class="icn">🔎</span> 目录搜索
+    </div>
+    <div class="nav-item" data-page="step3" onclick="goPage('step3')">
+      <span class="num" id="nav-3">3</span><span class="icn">📤</span> 提交 Feed
+    </div>
+    <div class="nav-item" data-page="step4" onclick="goPage('step4')">
+      <span class="num" id="nav-4">4</span><span class="icn">⏳</span> 轮询状态
+    </div>
+    <div class="nav-item" data-page="step5" onclick="goPage('step5')">
+      <span class="num" id="nav-5">5</span><span class="icn">🔍</span> 查询商品
+    </div>
+    <div class="nav-item" data-page="wfsinv" onclick="goPage('wfsinv')">
+      <span class="num" id="nav-wfs">W</span><span class="icn">🏭</span> WFS 库存
+    </div>
+    <div class="nav-item" data-page="step6" onclick="goPage('step6')">
+      <span class="num" id="nav-6">6</span><span class="icn">📊</span> 设置库存
+    </div>
+    <div class="nav-item" data-page="step7" onclick="goPage('step7')">
+      <span class="num" id="nav-7">7</span><span class="icn">💰</span> 设置价格
+    </div>
+    <h3 style="margin-top:24px">日志</h3>
+    <div class="log-panel" id="logPanel" style="margin:0 12px;max-height:240px">
+      <div class="log-line"><span class="ts">--:--:--</span> <span class="lvl-info">[系统]</span> 等待操作...</div>
+    </div>
+  </div>
+
+  <!-- 主内容 -->
+  <div class="main">
+
+    <!-- ═══ 设置页 ═══ -->
+    <div class="page active" id="page-settings">
+      <div class="card">
+        <div class="card-head"><h2>⚙️ API 凭证设置 <span class="badge blue">必填</span></h2></div>
+        <div class="card-body">
+          <div class="status-box info" id="demoNotice">
+            <span>💡</span>
+            <span>当前为 <b>Demo 模式</b>，无需真实凭证即可跑通全流程。切换到 Live 模式后需填写真实 Walmart API 凭证。</span>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>Client ID <span class="req">*</span> <span class="hint">Walmart Developer Portal 获取</span></label>
+              <input type="text" id="clientId" placeholder="45fd6351-d72f-0173-...">
+            </div>
+            <div class="form-group">
+              <label>Client Secret <span class="req">*</span> <span class="hint">仅 Admin 用户可见</span></label>
+              <input type="password" id="clientSecret" placeholder="••••••••••••">
+            </div>
+            <div class="form-group">
+              <label>Consumer Channel Type <span class="hint">onboarding 时获取</span></label>
+              <input type="text" id="channelType" placeholder="可选" disabled>
+            </div>
+            <div class="form-group full">
+              <label>🌐 代理地址 <span class="hint">国内必须填写，如 http://127.0.0.1:7890</span></label>
+              <input type="text" id="proxyAddr" placeholder="http://127.0.0.1:7890" value="">
+            </div>
+            <div class="form-group">
+              <label>目标市场</label>
+              <select id="marketSelect" disabled>
+                <option value="us">🇺🇸 美国 (WALMART_US)</option>
+                <option value="ca">🇨🇦 加拿大 (WALMART_CA)</option>
+                <option value="mx">🇲🇽 墨西哥 (WALMART_MX)</option>
+              </select>
+            </div>
+            <div class="form-group full">
+              <label>环境</label>
+              <div style="display:flex;gap:16px;padding-top:4px">
+                <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer">
+                  <input type="radio" name="env" value="sandbox" disabled> Sandbox (测试环境)
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:14px;cursor:pointer">
+                  <input type="radio" name="env" value="production" checked disabled> Production (生产环境)
+                </label>
+              </div>
+            </div>
+          </div>
+          <div style="margin-top:20px;display:flex;gap:12px">
+            <button class="btn btn-primary btn-lg" onclick="saveSettings()">💾 保存设置</button>
+            <button class="btn btn-ghost btn-lg" onclick="goPage('step1')">下一步 →</button>
+          </div>
+        </div>
+      </div>
+      <!-- AI 优化设置 -->
+      <div class="card" style="margin-top:20px">
+        <div class="card-head"><h2>🤖 AI 优化设置 <span class="badge green">可选</span></h2></div>
+        <div class="card-body">
+          <div class="status-box info">
+            <span>💡</span>
+            <span>内置优化引擎无需配置即可使用。填入 OpenAI 兼容 API Key 后将自动切换到 LLM 模式，生成更自然的内容。</span>
+          </div>
+          <div class="form-grid">
+            <div class="form-group full">
+              <label>AI API Key <span class="hint">OpenAI / DeepSeek / Moonshot 等兼容服务</span></label>
+              <input type="password" id="aiApiKey" placeholder="sk-...">
+            </div>
+            <div class="form-group">
+              <label>Base URL</label>
+              <input type="text" id="aiBaseUrl" value="https://api.openai.com/v1" placeholder="https://api.openai.com/v1">
+            </div>
+            <div class="form-group">
+              <label>模型</label>
+              <input type="text" id="aiModel" value="gpt-4o-mini" placeholder="gpt-4o-mini">
+            </div>
+            <div class="form-group full">
+              <label>优化模式</label>
+              <select id="aiMode">
+                <option value="auto">自动（有 Key 用 LLM，无 Key 用内置引擎）</option>
+                <option value="builtin">强制内置引擎</option>
+                <option value="llm">强制 LLM（需 Key）</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-top:16px;display:flex;align-items:center;gap:12px">
+            <button class="btn btn-primary" onclick="saveAiSettings()">💾 保存 AI 设置</button>
+            <span id="aiStatusBadge" class="badge" style="background:#e2e8f0;color:var(--gray)">未配置</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Step 1: Token ═══ -->
+    <div class="page" id="page-step1">
+      <div class="step-bar">
+        <div class="step-dot done">✓</div><div class="step-line done"></div>
+        <div class="step-dot active">1</div><div class="step-line"></div>
+        <div class="step-dot">2</div><div class="step-line"></div>
+        <div class="step-dot">3</div><div class="step-line"></div>
+        <div class="step-dot">4</div>
+      </div>
+      <div class="card">
+        <div class="card-head">
+          <h2>🔑 获取 Access Token <span class="badge orange">OAuth 2.0</span></h2>
+          <button class="btn btn-ghost" onclick="goPage('settings')">← 设置</button>
+        </div>
+        <div class="card-body">
+          <p style="color:var(--gray);margin-bottom:16px;font-size:14px">
+            使用 Client Credentials 授权模式获取 Token。Token 有效期 15 分钟（900 秒），系统会自动缓存复用。
+          </p>
+          <div class="json-viewer" style="margin-bottom:16px">
+<pre><span class="json-key">POST</span> /v3/token
+<span class="json-key">Authorization</span>: Basic Base64(ClientID:ClientSecret)
+<span class="json-key">Body</span>: grant_type=client_credentials
+
+<span class="json-str">→ 响应: {"access_token":"eyJ...","expires_in":900}</span></pre>
+          </div>
+          <button class="btn btn-primary btn-lg btn-block" id="btnGetToken" onclick="getToken()">
+            🔑 获取 Access Token
+          </button>
+          <div id="tokenResult" style="margin-top:16px"></div>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:space-between">
+        <button class="btn btn-ghost" onclick="goPage('settings')">← 上一步</button>
+        <button class="btn btn-primary" id="next1" onclick="goPage('step2')">下一步: 构建商品 →</button>
+      </div>
+    </div>
+
+    <!-- ═══ Step 2: 构建商品 ═══ -->
+    <div class="page" id="page-step2">
+      <div class="card">
+        <div class="card-head">
+          <h2>📦 构建商品 Feed <span class="badge blue">Item Spec 5.0</span></h2>
+        </div>
+        <div class="card-body">
+          <p style="color:var(--gray);margin-bottom:20px;font-size:14px">填写商品信息，系统自动生成符合 Walmart Item Spec 5.0 的 Feed JSON。</p>
+
+          <!-- AI 一键优化栏 -->
+          <div style="display:flex;gap:12px;align-items:center;margin-bottom:16px;padding:14px 16px;background:linear-gradient(90deg,#f0f7ff,#faf5ff);border-radius:10px;border:1.5px dashed #b8d4ff">
+            <button class="btn btn-primary btn-lg" id="btnAiAll" onclick="aiOptimizeAll()">🤖 一键 AI 优化</button>
+            <span class="hint" id="aiModeHint">优化：标题 + 简述 + 详述 + 五点特征</span>
+            <button class="btn btn-ghost" style="margin-left:auto" onclick="toggleAiPreview()">👁 预览</button>
+          </div>
+          <!-- AI 预览面板 -->
+          <div id="aiPreviewPanel" style="display:none;margin-bottom:20px;border:1.5px solid #e0e6ed;border-radius:12px;overflow:hidden">
+            <div style="padding:12px 16px;background:#f8fafc;border-bottom:1px solid #e0e6ed;display:flex;justify-content:space-between;align-items:center">
+              <b>🤖 AI 优化预览</b>
+              <div style="display:flex;gap:8px">
+                <button class="btn btn-success btn-sm" onclick="applyAllAiResults()">✅ 全部应用</button>
+                <button class="btn btn-ghost btn-sm" onclick="document.getElementById('aiPreviewPanel').style.display='none'">✖ 关闭</button>
+              </div>
+            </div>
+            <div id="aiPreviewBody" style="padding:16px;max-height:500px;overflow:auto"></div>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>SKU <span class="req">*</span> <span class="hint">卖家自定义唯一标识</span></label>
+              <input type="text" id="pSku" value="SP-IP15PM-01" placeholder="如 SP-IP15PM-01">
+            </div>
+            <div class="form-group">
+              <label>商品名称 <span class="req">*</span> <button class="btn btn-ghost btn-sm" type="button" onclick="aiOptimizeField('title')">🤖 优化</button></label>
+              <input type="text" id="pName" value="iPhone 15 Pro Max Tempered Glass Screen Protector" placeholder="商品标题">
+            </div>
+            <div class="form-group">
+              <label>品牌 <span class="req">*</span></label>
+              <input type="text" id="pBrand" value="ScreenGuard" placeholder="品牌名">
+            </div>
+            <div class="form-group">
+              <label>价格 (USD) <span class="req">*</span></label>
+              <input type="number" id="pPrice" value="9.99" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+              <label>UPC <span class="hint">或 GTIN，二选一</span></label>
+              <input type="text" id="pUpc" value="123456789012" placeholder="12位 UPC">
+            </div>
+            <div class="form-group">
+              <label>GTIN (14位) <span class="hint">优先于 UPC</span></label>
+              <input type="text" id="pGtin" value="" placeholder="00012345678905">
+            </div>
+            <div class="form-group">
+              <label>Walmart 产品类型 <span class="req">*</span> <span class="hint">官方 Taxonomy 类目</span></label>
+              <select id="productType" onchange="syncCategory()">
+                <option value="Skins for Cell Phones and Phone Grips">Skins for Cell Phones and Phone Grips ⭐ 钢化膜首选</option>
+                <option value="Cell Phone Parts">Cell Phone Parts（钢化膜/镜头膜可选）</option>
+                <option value="Cell Phone Cases">Cell Phone Cases</option>
+                <option value="Cell Phone Radiation Guards">Cell Phone Radiation Guards</option>
+                <option value="Cell Phone Signal Boosters">Cell Phone Signal Boosters</option>
+                <option value="Cell Phone Tool Kits">Cell Phone Tool Kits</option>
+                <option value="Cell Service Prepaid Refills">Cell Service Prepaid Refills</option>
+                <option value="Armband Phone Cases">Armband Phone Cases</option>
+                <option value="Car Mounts">Car Mounts</option>
+                <option value="Headset Adapters">Headset Adapters</option>
+                <option value="Headsets">Headsets</option>
+                <option value="Phone Amplifiers">Phone Amplifiers</option>
+                <option value="Phone Grips">Phone Grips</option>
+                <option value="Phone Jacks">Phone Jacks</option>
+                <option value="Phone Shoulder Rests">Phone Shoulder Rests</option>
+                <option value="Prepaid Calling Cards">Prepaid Calling Cards</option>
+                <option value="SIM Card Backup Devices">SIM Card Backup Devices</option>
+                <option value="SIM Card Holders">SIM Card Holders</option>
+                <option value="SIM Card Readers">SIM Card Readers</option>
+                <option value="SIM Cards">SIM Cards</option>
+                <option value="Telephone Cables">Telephone Cables</option>
+                <option value="VoIP Phone Adapters">VoIP Phone Adapters</option>
+                <option value="Wireless Phone Jacks">Wireless Phone Jacks</option>
+              </select>
+              <input type="hidden" id="pCategory" value="Phone Accessories">
+            </div>
+            <div class="form-group">
+              <label>商品状态</label>
+              <select id="pCondition">
+                <option value="New">New (全新)</option>
+                <option value="Restored">Restored (翻新)</option>
+                <option value="Open Box">Open Box (开箱)</option>
+              </select>
+            </div>
+            <div class="form-group full">
+              <label>主图 URL <span class="req">*</span> <span class="hint">建议 2200×2200px, JPG, Walmart 至少需 1 张主图</span></label>
+              <div style="display:flex;gap:12px;align-items:flex-start">
+                <input type="text" id="pImage" value="https://example.com/product-main.jpg" placeholder="https://..." style="flex:1" oninput="previewImage(this,'imgPrev0')">
+                <div class="img-thumb" id="imgPrev0" onclick="this.querySelector('img')?.remove()"></div>
+              </div>
+            </div>
+            <div class="form-group full">
+              <label>副图 2 URL <span class="hint">第 2 张图，Walmart 建议至少 5 张图</span></label>
+              <div style="display:flex;gap:12px;align-items:flex-start">
+                <input type="text" id="pImage2" value="https://example.com/product-2.jpg" placeholder="https://..." style="flex:1" oninput="previewImage(this,'imgPrev2')">
+                <div class="img-thumb" id="imgPrev2"></div>
+              </div>
+            </div>
+            <div class="form-group full">
+              <label>副图 3 URL</label>
+              <div style="display:flex;gap:12px;align-items:flex-start">
+                <input type="text" id="pImage3" value="https://example.com/product-3.jpg" placeholder="https://..." style="flex:1" oninput="previewImage(this,'imgPrev3')">
+                <div class="img-thumb" id="imgPrev3"></div>
+              </div>
+            </div>
+            <div class="form-group full">
+              <label>副图 4 URL</label>
+              <div style="display:flex;gap:12px;align-items:flex-start">
+                <input type="text" id="pImage4" value="https://example.com/product-4.jpg" placeholder="https://..." style="flex:1" oninput="previewImage(this,'imgPrev4')">
+                <div class="img-thumb" id="imgPrev4"></div>
+              </div>
+            </div>
+            <div class="form-group full">
+              <label>副图 5 URL</label>
+              <div style="display:flex;gap:12px;align-items:flex-start">
+                <input type="text" id="pImage5" value="https://example.com/product-5.jpg" placeholder="https://..." style="flex:1" oninput="previewImage(this,'imgPrev5')">
+                <div class="img-thumb" id="imgPrev5"></div>
+              </div>
+            </div>
+            <div class="form-group full">
+              <label>简短描述 (Short Description) <span class="hint">根据标题 AI 生成</span> <button class="btn btn-primary btn-sm" type="button" onclick="aiOptimizeField('short_desc')">🤖 一键生成</button></label>
+              <textarea id="pDesc" placeholder="商品简述...">Premium tempered glass screen protector for iPhone 15 Pro Max with 9H hardness, oleophobic coating, and bubble-free installation.</textarea>
+            </div>
+            <div class="form-group full">
+              <label>详细描述 (Long Description) <span class="hint">根据标题 AI 生成</span> <button class="btn btn-primary btn-sm" type="button" onclick="aiOptimizeField('long_desc')">🤖 一键生成</button></label>
+              <textarea id="pLongDesc" placeholder="详细描述..." style="min-height:100px">Protect your iPhone 15 Pro Max with our premium tempered glass screen protector. Features 9H hardness for ultimate scratch and shatter resistance, oleophobic coating to repel fingerprints, and bubble-free installation with included alignment frame. Case-friendly edge-to-edge full coverage design.</textarea>
+            </div>
+
+            <!-- ═══ 五点特征 ═══ -->
+            <div class="form-group full" style="border-top:2px solid #f0f0f0;padding-top:20px;margin-top:8px">
+              <label style="font-size:15px;margin-bottom:4px;display:flex;align-items:center;gap:8px">⭐ 五点特征 (Key Features) <span class="req">*</span> <button class="btn btn-ghost btn-sm" type="button" onclick="aiOptimizeField('key_features')">🤖 一键生成</button></label>
+              <span class="tip">Walmart 要求 5 条核心卖点，每条会显示为商品页面的 Bullet Point</span>
+              <div style="display:flex;flex-direction:column;gap:8px;margin-top:10px">
+                <input type="text" id="kf1" class="kf-input" value="9H Hardness military grade tempered glass, scratch and shatter resistant" placeholder="特征 1">
+                <input type="text" id="kf2" class="kf-input" value="Oleophobic coating, anti-fingerprint and smudge-resistant, easy to clean" placeholder="特征 2">
+                <input type="text" id="kf3" class="kf-input" value="Bubble-free installation with alignment frame, easy to apply in seconds" placeholder="特征 3">
+                <input type="text" id="kf4" class="kf-input" value="Ultra-thin design maintains original touch sensitivity and HD clarity" placeholder="特征 4">
+                <input type="text" id="kf5" class="kf-input" value="Case-friendly edge-to-edge full coverage for iPhone 15 Pro Max" placeholder="特征 5">
+              </div>
+            </div>
+
+            <!-- ═══ 变体管理 ═══ -->
+            <div class="form-group full" style="border-top:2px solid #f0f0f0;padding-top:20px;margin-top:8px">
+              <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+                <div>
+                  <label style="font-size:15px;margin-bottom:0">🔄 商品变体 (Variants) <span class="hint">可选</span></label>
+                  <span class="tip">同一商品的不同颜色/尺码等变体，每个变体是独立 SKU</span>
+                </div>
+                <div style="display:flex;align-items:center;gap:8px">
+                  <label style="font-size:13px;cursor:pointer;display:flex;align-items:center;gap:4px">
+                    <input type="checkbox" id="enableVariants" onchange="toggleVariants()" style="width:16px;height:16px"> 启用变体
+                  </label>
+                  <button class="btn btn-ghost" id="btnAddVariant" style="display:none;padding:6px 14px;font-size:12px" onclick="addVariant()">+ 添加变体</button>
+                </div>
+              </div>
+              <!-- 变体组 ID -->
+              <div class="form-group" id="vgIdGroup" style="display:none;margin-bottom:12px">
+                <label>变体组 ID (Variant Group ID) <span class="hint">留空自动生成</span></label>
+                <input type="text" id="variantGroupId" placeholder="VG-MY-PRODUCT-001">
+              </div>
+              <!-- 变体列表 -->
+              <div id="variantList" style="display:none"></div>
+            </div>
+
+            <div class="form-group">
+              <label>初始库存数量 <span class="hint">可留空，后续设置</span></label>
+              <input type="number" id="pQty" value="100" placeholder="0">
+            </div>
+            <div class="form-group">
+              <label>履约中心 ID</label>
+              <input type="text" id="pFcId" value="FC01" placeholder="FC01">
+            </div>
+
+            <!-- ═══ 包裹尺寸 & 原产地 ═══ -->
+            <div class="form-group full" style="border-top:2px solid #f0f0f0;padding-top:20px;margin-top:8px">
+              <label style="font-size:15px">📦 包裹尺寸 & 原产地 <span class="hint">用于运费计算 & 关税/跨境合规</span></label>
+            </div>
+            <div class="form-group">
+              <label>包裹宽度 (in) <span class="hint">英寸</span></label>
+              <input type="number" id="pkgWidth" value="3.0" step="0.01" placeholder="如 3.0">
+            </div>
+            <div class="form-group">
+              <label>包裹高度 (in) <span class="hint">英寸</span></label>
+              <input type="number" id="pkgHeight" value="6.0" step="0.01" placeholder="如 6.0">
+            </div>
+            <div class="form-group">
+              <label>包裹深度 (in) <span class="hint">英寸</span></label>
+              <input type="number" id="pkgDepth" value="0.15" step="0.01" placeholder="如 0.15">
+            </div>
+            <div class="form-group">
+              <label>包裹重量 (lb) <span class="hint">磅</span></label>
+              <input type="number" id="pkgWeight" value="0.05" step="0.01" placeholder="如 0.05">
+            </div>
+            <div class="form-group">
+              <label>原产地 (COO) <span class="hint">国家代码, 用于关税</span></label>
+              <select id="countryOfOrigin">
+                <option value="CN">🇨🇳 中国 (CN)</option>
+                <option value="US">🇺🇸 美国 (US)</option>
+                <option value="VN">🇻🇳 越南 (VN)</option>
+                <option value="IN">🇮🇳 印度 (IN)</option>
+                <option value="MX">🇲🇽 墨西哥 (MX)</option>
+                <option value="DE">🇩🇪 德国 (DE)</option>
+                <option value="JP">🇯🇵 日本 (JP)</option>
+                <option value="KR">🇰🇷 韩国 (KR)</option>
+                <option value="TH">🇹🇭 泰国 (TH)</option>
+                <option value="BD">🇧🇩 孟加拉 (BD)</option>
+              </select>
+            </div>
+
+            <!-- ═══ 合规 & 产品类型字段 ═══ -->
+            <div class="form-group full" style="border-top:2px solid #f0f0f0;padding-top:20px;margin-top:8px">
+              <label style="font-size:15px">📋 合规字段 <span class="hint">匹配 Walmart 最新 API Payload</span>
+                <button class="btn btn-ghost btn-sm" type="button" onclick="queryTaxonomy()" style="margin-left:8px">📋 查询全量类目</button>
+              </label>
+            </div>
+            <div class="form-group">
+              <label>材质 (Material) <span class="hint">如 Tempered Glass</span></label>
+              <input type="text" id="material" value="Tempered Glass" placeholder="Tempered Glass">
+            </div>
+            <div class="form-group">
+              <label>保修 URL <span class="hint">可选</span></label>
+              <input type="text" id="warrantyUrl" value="" placeholder="https://...">
+            </div>
+            <div class="form-group">
+              <label>ASIN <span class="hint">外部产品标识, 可选</span></label>
+              <input type="text" id="asin" value="" placeholder="B0XXXXXXXX">
+            </div>
+            <div class="form-group">
+              <label>发布日期 (Release Date) <span class="hint">可选, 格式 YYYY-MM-DD</span></label>
+              <input type="text" id="releaseDate" value="" placeholder="2025-01-01">
+            </div>
+          </div>
+          <div style="margin-top:20px;display:flex;gap:12px">
+            <button class="btn btn-primary btn-lg" onclick="buildFeed()">🔨 生成 Feed JSON</button>
+            <button class="btn btn-ghost btn-lg" onclick="goPage('step3')">直接到提交 →</button>
+          </div>
+          <div id="feedPreview" style="margin-top:16px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Step 2b: 目录搜索 ═══ -->
+    <div class="page" id="page-step2b">
+      <div class="card">
+        <div class="card-head">
+          <h2>🔎 目录搜索 <span class="badge green">POST /v3/items/catalog/search</span></h2>
+        </div>
+        <div class="card-body">
+          <div class="status-box info">
+            <span>💡</span>
+            <span>上架前搜索 Walmart 目录，确认商品是否已存在。如已存在可用 <b>MP_ITEM_MATCH</b> 快速创建 Offer，无需全量上架。</span>
+          </div>
+          <div class="form-group" style="max-width:500px;margin-bottom:16px">
+            <label>搜索关键词 <span class="hint">商品名称/品牌/UPC/GTIN</span></label>
+            <input type="text" id="catalogQuery" value="Wireless Bluetooth Headphones" placeholder="输入搜索关键词">
+          </div>
+          <button class="btn btn-primary btn-lg" onclick="catalogSearch()">🔎 搜索目录</button>
+          <div id="catalogResult" style="margin-top:16px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ WFS 库存查询 ═══ -->
+    <div class="page" id="page-wfsinv">
+      <div class="card">
+        <div class="card-head">
+          <h2>🏭 WFS 仓库存查询 <span class="badge blue">GET /v3/fulfillment/inventory-details</span></h2>
+        </div>
+        <div class="card-body">
+          <div class="status-box info">
+            <span>🏭</span>
+            <span>查询 Walmart 履约中心 (WFS) 的实时库存数据。新版端点 <code>/v3/fulfillment/inventory-details</code> 替代旧版 <code>/v3/fulfillment/inventory</code>（2026 弃用）。</span>
+          </div>
+          <div class="form-grid" style="margin-bottom:16px">
+            <div class="form-group">
+              <label>SKU <span class="hint">可选</span></label>
+              <input type="text" id="wfsSku" placeholder="输入 SKU 查询">
+            </div>
+            <div class="form-group">
+              <label>GTIN <span class="hint">可选, 14位</span></label>
+              <input type="text" id="wfsGtin" placeholder="00012345678905">
+            </div>
+          </div>
+          <button class="btn btn-primary btn-lg" onclick="getWfsInventory()">🏭 查询 WFS 库存</button>
+          <div id="wfsResult" style="margin-top:16px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Step 3: 提交 Feed ═══ -->
+    <div class="page" id="page-step3">
+      <div class="card">
+        <div class="card-head">
+          <h2>📤 提交商品 Feed <span class="badge blue">POST /v3/feeds</span></h2>
+        </div>
+        <div class="card-body">
+          <p style="color:var(--gray);margin-bottom:16px;font-size:14px">确认 Feed JSON 后提交到 Walmart API。提交成功将返回 <code>feedId</code>。</p>
+          <div id="feedJsonDisplay" style="margin-bottom:16px">
+            <div class="status-box warning"><span>⚠️</span><span>请先在「构建商品」步骤生成 Feed JSON</span></div>
+          </div>
+          <button class="btn btn-success btn-lg btn-block" id="btnSubmitFeed" onclick="submitFeed()">
+            📤 提交 Feed 到 Walmart
+          </button>
+          <div id="submitResult" style="margin-top:16px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Step 4: 轮询 ═══ -->
+    <div class="page" id="page-step4">
+      <div class="card">
+        <div class="card-head">
+          <h2>⏳ 轮询 Feed 处理状态 <span class="badge orange">异步</span></h2>
+        </div>
+        <div class="card-body">
+          <p style="color:var(--gray);margin-bottom:16px;font-size:14px">Feed 提交后 Walmart 异步处理。点击查询查看最新状态，或开启自动轮询。</p>
+          <div style="display:flex;gap:12px;margin-bottom:16px">
+            <button class="btn btn-primary" onclick="pollFeed()">🔍 查询一次</button>
+            <button class="btn btn-warn" id="btnAutoPoll" onclick="toggleAutoPoll()">▶ 自动轮询</button>
+            <button class="btn btn-ghost" onclick="clearHistory()">清空历史</button>
+          </div>
+          <div id="feedStatusResult"></div>
+          <div class="history-list" id="historyList"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Step 5: 查询商品 ═══ -->
+    <div class="page" id="page-step5">
+      <div class="card">
+        <div class="card-head">
+          <h2>🔍 查询商品发布状态 <span class="badge green">GET /v3/items</span></h2>
+        </div>
+        <div class="card-body">
+          <p style="color:var(--gray);margin-bottom:16px;font-size:14px">Feed 处理完成后，查询商品是否已成功发布到 Walmart.com。</p>
+          <div class="form-group" style="max-width:400px;margin-bottom:16px">
+            <label>SKU</label>
+            <input type="text" id="querySku" placeholder="输入要查询的 SKU">
+          </div>
+          <button class="btn btn-primary btn-lg" onclick="queryItem()">🔍 查询商品</button>
+          <div id="itemResult" style="margin-top:16px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Step 6: 库存 ═══ -->
+    <div class="page" id="page-step6">
+      <div class="card">
+        <div class="card-head">
+          <h2>📊 设置库存 <span class="badge blue">PUT /v3/inventory</span></h2>
+        </div>
+        <div class="card-body">
+          <div class="status-box warning">
+            <span>⚠️</span>
+            <span>新商品在 Walmart 系统中需要约 <b>4 小时</b>生效。Live 模式下过早设置库存会收到 "SKU not found" 错误。</span>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>SKU <span class="req">*</span></label>
+              <input type="text" id="invSku" placeholder="MY-PRODUCT-001">
+            </div>
+            <div class="form-group">
+              <label>库存数量 <span class="req">*</span></label>
+              <input type="number" id="invQty" value="100" placeholder="100">
+            </div>
+            <div class="form-group">
+              <label>履约中心 ID</label>
+              <input type="text" id="invFcId" value="FC01" placeholder="FC01">
+            </div>
+          </div>
+          <button class="btn btn-primary btn-lg" style="margin-top:16px" onclick="updateInventory()">📊 更新库存</button>
+          <div id="invResult" style="margin-top:16px"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ Step 7: 价格 ═══ -->
+    <div class="page" id="page-step7">
+      <div class="card">
+        <div class="card-head">
+          <h2>💰 设置价格 <span class="badge blue">PUT /v3/price</span></h2>
+        </div>
+        <div class="card-body">
+          <p style="color:var(--gray);margin-bottom:16px;font-size:14px">通过 Price API 单独管理商品售价。</p>
+          <div class="form-grid">
+            <div class="form-group">
+              <label>SKU <span class="req">*</span></label>
+              <input type="text" id="priceSku" placeholder="MY-PRODUCT-001">
+            </div>
+            <div class="form-group">
+              <label>价格 <span class="req">*</span></label>
+              <input type="number" id="priceVal" value="29.99" step="0.01" placeholder="0.00">
+            </div>
+            <div class="form-group">
+              <label>货币</label>
+              <select id="priceCurrency">
+                <option value="USD">USD</option>
+                <option value="CAD">CAD</option>
+                <option value="MXN">MXN</option>
+              </select>
+            </div>
+          </div>
+          <button class="btn btn-primary btn-lg" style="margin-top:16px" onclick="updatePrice()">💰 更新价格</button>
+          <div id="priceResult" style="margin-top:16px"></div>
+          <div class="status-box success" style="margin-top:24px">
+            <span>🎉</span>
+            <span>完成所有步骤后，商品已在 Walmart.com 上线销售！</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ═══════════════════════════════════════════════════
+// 后端地址配置（部署到 GitHub Pages 时这一处必改）
+//   - 本地 / Codespaces / 同源运行：保持空字符串 "" 即可
+//   - 部署到 GitHub Pages：把下面 onrender.com 换成你的后端地址
+//     （后端部署在 Render / Railway，见 README）
+//   已自动识别 *.github.io 域名并指向后端，无需手动切换。
+// ═══════════════════════════════════════════════════
+const BACKEND_URL = (function () {
+  if (location.hostname.endsWith('github.io')) {
+    return "https://walmart-uploader.onrender.com"; // ← 改成你的 Render / Railway 后端地址
+  }
+  return ""; // 本地 / 同源运行
+})();
+
+// ═══════════════════════════════════════════════════
+// 全局状态
+// ═══════════════════════════════════════════════════
+let DEMO_MODE = true;
+let currentFeedJson = null;
+let autoPollTimer = null;
+let stepProgress = 0;
+
+// ═══════════════════════════════════════════════════
+// 页面导航
+// ═══════════════════════════════════════════════════
+function goPage(page) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  document.querySelector(`.nav-item[data-page="${page}"]`).classList.add('active');
+
+  // 预填 SKU
+  const sku = document.getElementById('pSku')?.value;
+  if (sku) {
+    if (document.getElementById('querySku')) document.getElementById('querySku').value = sku;
+    if (document.getElementById('invSku')) document.getElementById('invSku').value = sku;
+    if (document.getElementById('priceSku')) document.getElementById('priceSku').value = sku;
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 模式切换
+// ═══════════════════════════════════════════════════
+function toggleMode() {
+  DEMO_MODE = !DEMO_MODE;
+  const sw = document.getElementById('modeSwitch');
+  const label = document.getElementById('modeLabel');
+  const notice = document.getElementById('demoNotice');
+  const inputs = ['clientId','clientSecret','channelType','marketSelect'];
+
+  if (DEMO_MODE) {
+    sw.classList.add('on');
+    label.textContent = 'DEMO 模式';
+    label.className = 'mode-label demo';
+    notice.innerHTML = '<span>💡</span><span>当前为 <b>Demo 模式</b>，无需真实凭证即可跑通全流程。切换到 Live 模式后需填写真实 Walmart API 凭证。</span>';
+    inputs.forEach(id => document.getElementById(id).disabled = true);
+    document.querySelectorAll('input[name="env"]').forEach(r => r.disabled = true);
+  } else {
+    sw.classList.remove('on');
+    label.textContent = 'LIVE 模式';
+    label.className = 'mode-label live';
+    notice.innerHTML = '<span>🔴</span><span>当前为 <b>Live 模式</b>，将使用真实 Walmart API。凭证已预填，请点击「保存设置」后操作。</span>';
+    inputs.forEach(id => document.getElementById(id).disabled = false);
+    document.querySelectorAll('input[name="env"]').forEach(r => r.disabled = false);
+    // 自动选中 Production 环境
+    document.querySelector('input[name="env"][value="production"]').checked = true;
+    // 自动保存设置到后端
+    setTimeout(() => saveSettings(), 500);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 设置保存
+// ═══════════════════════════════════════════════════
+async function saveSettings() {
+  const data = {
+    client_id: document.getElementById('clientId').value,
+    client_secret: document.getElementById('clientSecret').value,
+    channel_type: document.getElementById('channelType').value,
+    sandbox: document.querySelector('input[name="env"]:checked').value === 'sandbox',
+    demo_mode: DEMO_MODE,
+    proxy: document.getElementById('proxyAddr').value,
+  };
+  try {
+    const r = await fetch(BACKEND_URL + '/api/settings', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const resp = await r.json();
+    toast('设置已保存 ' + (DEMO_MODE ? '(Demo)' : '(Live)'), 'success');
+    markNavDone(0);
+  } catch(e) { toast('保存失败: ' + e, 'error'); }
+}
+
+// ═══════════════════════════════════════════════════
+// Step 1: 获取 Token
+// ═══════════════════════════════════════════════════
+async function getToken() {
+  const btn = document.getElementById('btnGetToken');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> 获取中...';
+  log('正在获取 Access Token...', 'info');
+
+  try {
+    // 直接传凭证到后端，不依赖 state 是否已保存
+    const r = await fetch(BACKEND_URL + '/api/auth/token', {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        client_id: val('clientId'),
+        client_secret: val('clientSecret'),
+        sandbox: document.querySelector('input[name="env"]:checked')?.value === 'sandbox',
+        demo_mode: DEMO_MODE,
+        proxy: val('proxyAddr'),
+      })
+    });
+    const text = await r.text();
+    let resp;
+    try { resp = JSON.parse(text); } catch(e) {
+      throw new Error('服务器返回非JSON: ' + text.substring(0,100));
+    }
+    if (!r.ok) throw new Error(resp.detail || resp.error || 'API Error');
+
+    const d = resp.data;
+    const expiry = new Date(Date.now() + d.expires_in * 1000);
+    document.getElementById('tokenResult').innerHTML = `
+      <div class="status-box success"><span>✅</span><span>Token 获取成功！${resp.demo ? '(Demo)' : '(Live)'}</span></div>
+      <div class="token-display">
+        <div class="token-val">${d.access_token.substring(0,50)}...</div>
+        <span class="token-expiry">⏱ ${d.expires_in}s (至 ${expiry.toLocaleTimeString()})</span>
+        <button class="copy-btn" onclick="copyText('${d.access_token}')">复制</button>
+      </div>
+    `;
+    toast('Token 获取成功!', 'success');
+    log(`Token 获取成功, 有效期 ${d.expires_in}s ${resp.demo ? '(Demo)' : '(Live)'}`, 'ok');
+    markNavDone(1);
+  } catch(e) {
+    document.getElementById('tokenResult').innerHTML = `<div class="status-box error"><span>❌</span><span>${e.message}</span></div>`;
+    toast('Token 获取失败', 'error');
+    log('Token 获取失败: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '🔑 获取 Access Token';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 图片预览
+// ═══════════════════════════════════════════════════
+function previewImage(input, thumbId) {
+  const thumb = document.getElementById(thumbId);
+  const url = input.value.trim();
+  thumb.innerHTML = '';
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    const img = document.createElement('img');
+    img.src = url;
+    img.onerror = () => { thumb.innerHTML = '❌'; };
+    thumb.appendChild(img);
+  }
+}
+
+// 页面加载时预填图片预览
+function initImagePreviews() {
+  for (let i = 0; i <= 5; i++) {
+    const id = i === 0 ? 'pImage' : `pImage${i}`;
+    const thumbId = `imgPrev${i}`;
+    const input = document.getElementById(id);
+    if (input && input.value) previewImage(input, thumbId);
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 变体管理
+// ═══════════════════════════════════════════════════
+let variantCount = 0;
+
+function toggleVariants() {
+  const enabled = document.getElementById('enableVariants').checked;
+  document.getElementById('variantList').style.display = enabled ? 'block' : 'none';
+  document.getElementById('vgIdGroup').style.display = enabled ? 'block' : 'none';
+  document.getElementById('btnAddVariant').style.display = enabled ? 'inline-flex' : 'none';
+  if (enabled && variantCount === 0) {
+    addVariant(); // 默认添加一个变体行
+    addVariant();
+  }
+}
+
+function addVariant() {
+  variantCount++;
+  const baseSku = val('pSku') || 'SKU';
+  const list = document.getElementById('variantList');
+  const row = document.createElement('div');
+  row.className = 'variant-row';
+  row.id = `variant-${variantCount}`;
+  row.innerHTML = `
+    <div class="v-num">${variantCount}</div>
+    <div><span class="v-label">变体 SKU *</span><input type="text" id="vSku-${variantCount}" value="${baseSku}-V${variantCount}" placeholder="SKU-RED-M"></div>
+    <div><span class="v-label">颜色</span><input type="text" id="vColor-${variantCount}" value="${variantCount === 1 ? 'Black' : 'White'}" placeholder="Black"></div>
+    <div><span class="v-label">价格</span><input type="number" id="vPrice-${variantCount}" value="${val('pPrice') || '29.99'}" step="0.01"></div>
+    <div><span class="v-label">尺码</span><input type="text" id="vSize-${variantCount}" placeholder="M / L / XL"></div>
+    <div><span class="v-label">UPC/GTIN</span><input type="text" id="vUpc-${variantCount}" placeholder="UPC" value="${variantCount === 1 ? '123456789012' : '123456789019'}"></div>
+    <button class="v-del" onclick="removeVariant(${variantCount})">×</button>
+  `;
+  list.appendChild(row);
+  log(`添加变体 #${variantCount}`, 'info');
+}
+
+function removeVariant(id) {
+  document.getElementById(`variant-${id}`)?.remove();
+  log(`移除变体 #${id}`, 'info');
+}
+
+function collectVariants() {
+  const variants = [];
+  const rows = document.querySelectorAll('.variant-row');
+  rows.forEach(row => {
+    const id = row.id.split('-')[1];
+    const sku = val(`vSku-${id}`);
+    if (!sku) return;
+    variants.push({
+      sku: sku,
+      color: val(`vColor-${id}`),
+      size: val(`vSize-${id}`),
+      price: parseFloat(val(`vPrice-${id}`) || '0'),
+      upc: val(`vUpc-${id}`),
+    });
+  });
+  return variants;
+}
+
+// ═══════════════════════════════════════════════════
+// Step 2: 构建 Feed
+// ═══════════════════════════════════════════════════
+async function buildFeed() {
+  // 收集 5 张图片
+  const mainImage = val('pImage');
+  const additionalImages = [
+    val('pImage2'), val('pImage3'), val('pImage4'), val('pImage5')
+  ].filter(u => u && u.trim());
+
+  // 收集五点特征
+  const keyFeatures = [val('kf1'), val('kf2'), val('kf3'), val('kf4'), val('kf5')].filter(f => f && f.trim());
+
+  // 检查必填
+  if (!mainImage) { toast('主图为必填项', 'error'); return; }
+  if (keyFeatures.length < 5) { toast(`五点特征需要 5 条，当前 ${keyFeatures.length} 条`, 'error'); return; }
+
+  // 收集变体
+  let variants = [];
+  let variantGroupId = '';
+  if (document.getElementById('enableVariants').checked) {
+    variants = collectVariants();
+    variantGroupId = val('variantGroupId');
+    if (variants.length === 0) { toast('已启用变体但未添加变体行', 'error'); return; }
+  }
+
+  const data = {
+    sku: val('pSku'), product_name: val('pName'), brand: val('pBrand'),
+    price: val('pPrice'), upc: val('pUpc'), gtin: val('pGtin'),
+    main_image: mainImage,
+    additional_images: additionalImages,
+    short_desc: val('pDesc'),
+    long_desc: val('pLongDesc'),
+    condition: val('pCondition'), category: val('pCategory'),
+    quantity: val('pQty'), fulfillment_center_id: val('pFcId'),
+    key_features: keyFeatures,
+    variants: variants,
+    variant_group_id: variantGroupId,
+    pkg_width: val('pkgWidth') || null,
+    pkg_height: val('pkgHeight') || null,
+    pkg_depth: val('pkgDepth') || null,
+    pkg_weight: val('pkgWeight') || null,
+    country_of_origin: val('countryOfOrigin'),
+    product_type: val('productType'),
+    material: val('material'),
+    warranty_url: val('warrantyUrl'),
+    asin: val('asin'),
+    release_date: val('releaseDate'),
+  };
+  try {
+    const r = await fetch(BACKEND_URL + '/api/feed/build', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const resp = await r.json();
+    if (!r.ok) throw new Error(resp.detail || 'Build error');
+
+    currentFeedJson = resp.feed;
+    const meta = resp.meta || {};
+    const metaHtml = meta.has_variants
+      ? `<span class="badge orange">🔄 ${meta.item_count} 个变体</span> <span class="badge blue">${meta.image_count} 张图</span> <span class="badge green">${meta.feature_count} 条特征</span>`
+      : `<span class="badge blue">${meta.image_count} 张图</span> <span class="badge green">${meta.feature_count} 条特征</span>`;
+
+    const feedStr = JSON.stringify(resp.feed, null, 2);
+    const feedEscaped = JSON.stringify(feedStr).replace(/"/g, '&quot;');
+    document.getElementById('feedPreview').innerHTML = `
+      <div class="status-box success"><span>✅</span><span>Feed JSON 生成成功！ ${metaHtml}</span></div>
+      <div class="json-viewer">
+        <button class="copy-btn" onclick="copyText(${feedEscaped})">复制</button>
+        <pre>${syntaxHighlight(feedStr)}</pre>
+      </div>`;
+    document.getElementById('feedJsonDisplay').innerHTML = `
+      <div class="status-box success"><span>✅</span><span>Feed JSON 已就绪 ${metaHtml}</span></div>
+      <div class="json-viewer" style="margin-top:8px">
+        <button class="copy-btn" onclick="copyText(${feedEscaped})">复制</button>
+        <pre>${syntaxHighlight(feedStr)}</pre>
+      </div>`;
+    toast(`Feed 生成成功: ${meta.image_count} 图, ${meta.feature_count} 特征${meta.has_variants ? ', '+meta.item_count+' 变体' : ''}`, 'success');
+    log(`Feed 构建: ${meta.image_count} 图, ${meta.feature_count} 特征${meta.has_variants ? ', '+meta.item_count+' 变体 (组: '+meta.variant_group_id+')' : ''}`, 'ok');
+    markNavDone(2);
+  } catch(e) {
+    toast('构建失败: ' + e.message, 'error');
+    log('Feed 构建失败: ' + e.message, 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// Step 3: 提交 Feed
+// ═══════════════════════════════════════════════════
+async function submitFeed() {
+  if (!currentFeedJson) { toast('请先生成 Feed JSON', 'error'); return; }
+  const btn = document.getElementById('btnSubmitFeed');
+  btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> 提交中...';
+  log('正在提交 Feed...', 'info');
+
+  try {
+    const sku = val('pSku');
+    const r = await fetch(BACKEND_URL + '/api/feed/submit', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({payload: currentFeedJson, sku: sku})
+    });
+    const resp = await r.json();
+    if (!r.ok) throw new Error(resp.detail || 'Submit error');
+
+    const d = resp.data;
+    document.getElementById('submitResult').innerHTML = `
+      <div class="status-box success"><span>✅</span><span>Feed 提交成功！</span></div>
+      <div class="json-viewer">
+        <pre>${syntaxHighlight(JSON.stringify(d, null, 2))}</pre>
+      </div>
+      <div class="status-box info" style="margin-top:8px">
+        <span>📌</span><span>feedId: <b>${d.feedId}</b> — Walmart 已接收，但不代表商品已上线。请到下一步轮询处理状态。</span>
+      </div>
+    `;
+    toast('Feed 提交成功! feedId=' + d.feedId.substring(0,20) + '...', 'success');
+    log(`Feed 提交成功, feedId=${d.feedId}`, 'ok');
+    markNavDone(3);
+  } catch(e) {
+    document.getElementById('submitResult').innerHTML = `<div class="status-box error"><span>❌</span><span>${e.message}</span></div>`;
+    toast('提交失败', 'error');
+    log('Feed 提交失败: ' + e.message, 'err');
+  } finally {
+    btn.disabled = false; btn.innerHTML = '📤 提交 Feed 到 Walmart';
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// Step 4: 轮询 Feed 状态
+// ═══════════════════════════════════════════════════
+async function pollFeed() {
+  log('查询 Feed 状态...', 'info');
+  try {
+    const r = await fetch(BACKEND_URL + '/api/feed/status');
+    const resp = await r.json();
+    if (!r.ok) throw new Error(resp.detail || 'Poll error');
+
+    const d = resp.data;
+    const status = d.feedStatus;
+    const isDone = status === 'PROCESSED' || status === 'ERROR';
+
+    let statusClass = 'info';
+    let icon = '⏳';
+    if (status === 'PROCESSED') { statusClass = 'success'; icon = '✅'; }
+    else if (status === 'ERROR') { statusClass = 'error'; icon = '❌'; }
+    else if (status === 'INPROGRESS') { statusClass = 'warning'; icon = '🔄'; }
+
+    document.getElementById('feedStatusResult').innerHTML = `
+      <div class="status-box ${statusClass}"><span>${icon}</span>
+        <span>Feed 状态: <b>${status}</b> | 成功: ${d.itemsSucceeded||0} | 失败: ${d.itemsFailed||0}</span>
+      </div>
+      <div class="json-viewer" style="margin-top:8px">
+        <pre>${syntaxHighlight(JSON.stringify(d, null, 2))}</pre>
+      </div>`;
+
+    // 更新历史
+    renderHistory(resp.history || []);
+
+    if (status === 'PROCESSED') {
+      toast('Feed 处理完成!', 'success');
+      log('Feed 处理完成', 'ok');
+      markNavDone(4);
+      if (autoPollTimer) toggleAutoPoll();
+    } else if (status === 'ERROR') {
+      toast('Feed 处理出错', 'error');
+      log('Feed 处理出错', 'err');
+      if (autoPollTimer) toggleAutoPoll();
+    } else {
+      log(`Feed 状态: ${status}, 继续等待...`, 'warn');
+    }
+  } catch(e) {
+    toast('查询失败: ' + e.message, 'error');
+    log('查询失败: ' + e.message, 'err');
+  }
+}
+
+function toggleAutoPoll() {
+  const btn = document.getElementById('btnAutoPoll');
+  if (autoPollTimer) {
+    clearInterval(autoPollTimer);
+    autoPollTimer = null;
+    btn.innerHTML = '▶ 自动轮询';
+    btn.className = 'btn btn-warn';
+    log('自动轮询已停止', 'info');
+  } else {
+    btn.innerHTML = '⏹ 停止轮询';
+    btn.className = 'btn btn-ghost';
+    log('自动轮询已启动 (每 3 秒)', 'info');
+    pollFeed();
+    autoPollTimer = setInterval(pollFeed, 3000);
+  }
+}
+
+function renderHistory(history) {
+  const el = document.getElementById('historyList');
+  el.innerHTML = history.map(h => `
+    <div class="history-item">
+      <span class="h-time">${h.time}</span>
+      <span class="h-status ${h.status}">${h.status}</span>
+      <span>✓${h.succeeded} ✗${h.failed}</span>
+    </div>
+  `).join('');
+}
+
+function clearHistory() {
+  document.getElementById('historyList').innerHTML = '';
+  document.getElementById('feedStatusResult').innerHTML = '';
+  log('历史已清空', 'info');
+}
+
+// ═══════════════════════════════════════════════════
+// Step 5: 查询商品
+// ═══════════════════════════════════════════════════
+async function queryItem() {
+  const sku = val('querySku');
+  if (!sku) { toast('请输入 SKU', 'error'); return; }
+  log(`查询商品 ${sku}...`, 'info');
+  try {
+    const r = await fetch(BACKEND_URL + `/api/item/${sku}`);
+    const resp = await r.json();
+    if (!r.ok) throw new Error(resp.detail || 'Query error');
+
+    const d = resp.data;
+    const pub = d.publishedStatus || 'UNKNOWN';
+    let cls = 'warning', icon = '⏳';
+    if (pub === 'PUBLISHED') { cls = 'success'; icon = '🟢'; }
+    else if (pub === 'UNPUBLISHED') { cls = 'warning'; icon = '🟡'; }
+
+    document.getElementById('itemResult').innerHTML = `
+      <div class="status-box ${cls}"><span>${icon}</span>
+        <span>publishedStatus: <b>${pub}</b> | lifecycleStatus: ${d.lifecycleStatus||'N/A'}</span>
+      </div>
+      <div class="json-viewer" style="margin-top:8px">
+        <pre>${syntaxHighlight(JSON.stringify(d, null, 2))}</pre>
+      </div>`;
+    if (pub === 'PUBLISHED') {
+      toast('商品已发布!', 'success');
+      markNavDone(5);
+    }
+    log(`商品查询完成: ${pub}`, 'ok');
+  } catch(e) {
+    document.getElementById('itemResult').innerHTML = `<div class="status-box error"><span>❌</span><span>${e.message}</span></div>`;
+    toast('查询失败', 'error');
+    log('查询失败: ' + e.message, 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// Step 6: 库存
+// ═══════════════════════════════════════════════════
+async function updateInventory() {
+  const data = {sku: val('invSku'), quantity: parseInt(val('invQty')), fulfillment_center_id: val('invFcId')};
+  if (!data.sku) { toast('请输入 SKU', 'error'); return; }
+  log(`更新库存 SKU=${data.sku} qty=${data.quantity}...`, 'info');
+  try {
+    const r = await fetch(BACKEND_URL + '/api/inventory', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const resp = await r.json();
+    if (!r.ok) throw new Error(resp.detail || 'Inventory error');
+    document.getElementById('invResult').innerHTML = `
+      <div class="status-box success"><span>✅</span><span>库存更新成功！</span></div>
+      <div class="json-viewer" style="margin-top:8px"><pre>${syntaxHighlight(JSON.stringify(resp.data, null, 2))}</pre></div>`;
+    toast('库存更新成功!', 'success');
+    log('库存更新成功', 'ok');
+    markNavDone(6);
+  } catch(e) {
+    document.getElementById('invResult').innerHTML = `<div class="status-box error"><span>❌</span><span>${e.message}</span></div>`;
+    toast('库存更新失败', 'error');
+    log('库存更新失败: ' + e.message, 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// Step 7: 价格
+// ═══════════════════════════════════════════════════
+async function updatePrice() {
+  const data = {sku: val('priceSku'), price: parseFloat(val('priceVal')), currency: val('priceCurrency')};
+  if (!data.sku) { toast('请输入 SKU', 'error'); return; }
+  log(`更新价格 SKU=${data.sku} price=${data.price}...`, 'info');
+  try {
+    const r = await fetch(BACKEND_URL + '/api/price', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const resp = await r.json();
+    if (!r.ok) throw new Error(resp.detail || 'Price error');
+    document.getElementById('priceResult').innerHTML = `
+      <div class="status-box success"><span>✅</span><span>价格更新成功！</span></div>
+      <div class="json-viewer" style="margin-top:8px"><pre>${syntaxHighlight(JSON.stringify(resp.data, null, 2))}</pre></div>`;
+    toast('价格更新成功!', 'success');
+    log('价格更新成功', 'ok');
+    markNavDone(7);
+  } catch(e) {
+    document.getElementById('priceResult').innerHTML = `<div class="status-box error"><span>❌</span><span>${e.message}</span></div>`;
+    toast('价格更新失败', 'error');
+    log('价格更新失败: ' + e.message, 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// 产品类型 → 类目自动推导
+// ═══════════════════════════════════════════════════
+const PRODUCT_TYPE_CATEGORY_MAP = {
+  // Phone accessories → Phone Accessories
+  "Skins for Cell Phones and Phone Grips": "Phone Accessories",
+  "Cell Phone Parts": "Phone Accessories",
+  "Cell Phone Cases": "Phone Accessories",
+  "Cell Phone Radiation Guards": "Phone Accessories",
+  "Cell Phone Signal Boosters": "Phone Accessories",
+  "Cell Phone Tool Kits": "Phone Accessories",
+  "Cell Service Prepaid Refills": "Phone Accessories",
+  "Armband Phone Cases": "Phone Accessories",
+  "Car Mounts": "Phone Accessories",
+  "Headset Adapters": "Phone Accessories",
+  "Headsets": "Phone Accessories",
+  "Phone Amplifiers": "Phone Accessories",
+  "Phone Grips": "Phone Accessories",
+  "Phone Jacks": "Phone Accessories",
+  "Phone Shoulder Rests": "Phone Accessories",
+  "Prepaid Calling Cards": "Phone Accessories",
+  "SIM Card Backup Devices": "Phone Accessories",
+  "SIM Card Holders": "Phone Accessories",
+  "SIM Card Readers": "Phone Accessories",
+  "SIM Cards": "Phone Accessories",
+  "Telephone Cables": "Phone Accessories",
+  "VoIP Phone Adapters": "Phone Accessories",
+  "Wireless Phone Jacks": "Phone Accessories",
+};
+
+function syncCategory() {
+  const pt = val('productType');
+  const category = PRODUCT_TYPE_CATEGORY_MAP[pt] || 'Electronics';
+  document.getElementById('pCategory').value = category;
+  log(`类目自动推导: ${pt} → ${category}`, 'info');
+}
+
+// ═══════════════════════════════════════════════════
+// Walmart 官方类目表查询
+// ═══════════════════════════════════════════════════
+async function queryTaxonomy() {
+  log('查询 Walmart 官方类目表...', 'info');
+  try {
+    const r = await fetch(BACKEND_URL + '/api/taxonomy');
+    const d = await r.json();
+    if (!d.ok) throw new Error(d.detail || 'Taxonomy error');
+    const data = d.data;
+    let html = '<div class="status-box success"><span>✅</span><span>官方类目表获取成功！</span></div>';
+
+    // 渲染类目树
+    if (data.productTypeGroups) {
+      data.productTypeGroups.forEach(g => {
+        html += `<div style="margin-top:12px;padding:12px;background:#f8fafc;border-radius:8px">`;
+        html += `<div style="font-weight:700;color:var(--dark);margin-bottom:8px">📁 ${g.productTypeGroup}</div>`;
+        if (g.productTypes) {
+          g.productTypes.forEach(pt => {
+            const pn = pt.productType || pt.name || pt;
+            const desc = pt.description || '';
+            html += `<div style="padding:4px 0;font-size:12px;color:#475569">`;
+            html += `<button class="btn btn-ghost btn-sm" onclick="setProductType('${pn.replace(/'/g,"\\'")}')" style="margin-right:8px">选择</button>`;
+            html += `<b>${pn}</b>`;
+            if (desc) html += ` <span style="color:var(--gray)">${desc}</span>`;
+            html += `</div>`;
+          });
+        }
+        html += `</div>`;
+      });
+    } else if (Array.isArray(data)) {
+      // 兼容直接返回数组的情况
+      data.forEach(item => {
+        html += `<div style="padding:4px 0;font-size:12px">${JSON.stringify(item).substring(0,200)}</div>`;
+      });
+    } else {
+      html += `<div class="json-viewer" style="margin-top:8px"><pre>${syntaxHighlight(JSON.stringify(data, null, 2))}</pre></div>`;
+    }
+
+    // 显示在目录搜索结果区域
+    let taxPanel = document.getElementById('taxonomyResult');
+    if (!taxPanel) {
+      taxPanel = document.createElement('div');
+      taxPanel.id = 'taxonomyResult';
+      taxPanel.style.marginTop = '16px';
+      document.querySelector('#page-step2 .card-body').appendChild(taxPanel);
+    }
+    taxPanel.innerHTML = html;
+    toast('类目表查询成功', 'success');
+    log('Taxonomy 查询完成', 'ok');
+  } catch(e) {
+    toast('查询失败: ' + e.message, 'error');
+    log('Taxonomy 查询失败: ' + e.message, 'err');
+  }
+}
+
+function setProductType(pt) {
+  const select = document.getElementById('productType');
+  // 检查是否已有该选项
+  let found = false;
+  for (const opt of select.options) {
+    if (opt.value === pt) { opt.selected = true; found = true; break; }
+  }
+  if (!found) {
+    // 添加新选项
+    const opt = document.createElement('option');
+    opt.value = pt; opt.textContent = pt;
+    select.appendChild(opt);
+    opt.selected = true;
+  }
+  toast('已选择产品类型: ' + pt, 'success');
+  log(`产品类型已设为: ${pt}`, 'ok');
+}
+
+// ═══════════════════════════════════════════════════
+// 目录搜索
+// ═══════════════════════════════════════════════════
+async function catalogSearch() {
+  const query = val('catalogQuery');
+  if (!query) { toast('请输入搜索关键词', 'error'); return; }
+  log(`目录搜索: "${query}"...`, 'info');
+  try {
+    const r = await fetch(BACKEND_URL + '/api/catalog/search', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({query: query})
+    });
+    const resp = await r.json();
+    if (!r.ok) throw new Error(resp.detail || 'Search error');
+    const d = resp.data;
+    const items = d.items || [];
+    if (items.length > 0) {
+      document.getElementById('catalogResult').innerHTML = `
+        <div class="status-box success"><span>✅</span><span>找到 ${items.length} 个匹配商品！可用 MP_ITEM_MATCH 快速创建 Offer</span></div>
+        <div class="json-viewer" style="margin-top:8px"><pre>${syntaxHighlight(JSON.stringify(d, null, 2))}</pre></div>`;
+      toast(`找到 ${items.length} 个匹配商品`, 'success');
+    } else {
+      document.getElementById('catalogResult').innerHTML = `
+        <div class="status-box warning"><span>⚠️</span><span>未找到匹配商品，需使用 MP_ITEM 全量上架</span></div>`;
+      toast('未找到匹配商品', 'info');
+    }
+    log(`目录搜索完成: ${items.length} 个结果`, 'ok');
+  } catch(e) {
+    document.getElementById('catalogResult').innerHTML = `<div class="status-box error"><span>❌</span><span>${e.message}</span></div>`;
+    toast('搜索失败', 'error');
+    log('目录搜索失败: ' + e.message, 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// WFS 库存查询
+// ═══════════════════════════════════════════════════
+async function getWfsInventory() {
+  const sku = val('wfsSku');
+  const gtin = val('wfsGtin');
+  if (!sku && !gtin) { toast('请输入 SKU 或 GTIN', 'error'); return; }
+  log(`WFS 库存查询 sku=${sku} gtin=${gtin}...`, 'info');
+  try {
+    let url = BACKEND_URL + '/api/wfs/inventory?';
+    if (sku) url += `sku=${encodeURIComponent(sku)}&`;
+    if (gtin) url += `gtin=${encodeURIComponent(gtin)}&`;
+    const r = await fetch(url);
+    const resp = await r.json();
+    if (!r.ok) throw new Error(resp.detail || 'WFS error');
+    const d = resp.data;
+    const inv = d.inventory || {};
+    const status = inv.inventoryStatus || 'N/A';
+    const qty = inv.quantity ? inv.quantity.amount : 'N/A';
+    let cls = 'info', icon = '📦';
+    if (status === 'IN_STOCK') { cls = 'success'; icon = '✅'; }
+    else if (status === 'OUT_OF_STOCK') { cls = 'error'; icon = '❌'; }
+    document.getElementById('wfsResult').innerHTML = `
+      <div class="status-box ${cls}"><span>${icon}</span>
+        <span>WFS 库存: <b>${qty}</b> | 状态: <b>${status}</b> | FC: ${inv.fulfillmentCenterId||'N/A'}</span>
+      </div>
+      <div class="json-viewer" style="margin-top:8px"><pre>${syntaxHighlight(JSON.stringify(d, null, 2))}</pre></div>`;
+    toast('WFS 库存查询成功', 'success');
+    log(`WFS 库存: ${qty} (${status})`, 'ok');
+  } catch(e) {
+    document.getElementById('wfsResult').innerHTML = `<div class="status-box error"><span>❌</span><span>${e.message}</span></div>`;
+    toast('查询失败', 'error');
+    log('WFS 库存查询失败: ' + e.message, 'err');
+  }
+}
+
+// ═══════════════════════════════════════════════════
+// AI 优化功能
+// ═══════════════════════════════════════════════════
+let aiResultsCache = {};
+const FIELD_LABELS = {
+  title: '标题', short_desc: '简短描述', long_desc: '详细描述', key_features: '五点特征'
+};
+
+async function saveAiSettings() {
+  const data = {
+    ai_api_key: val('aiApiKey'),
+    ai_base_url: val('aiBaseUrl'),
+    ai_model: val('aiModel'),
+    ai_mode: val('aiMode'),
+  };
+  try {
+    const r = await fetch(BACKEND_URL + '/api/settings/ai', {method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+    const resp = await r.json();
+    updateAiBadge(resp.ai_configured, resp.ai_mode);
+    toast('AI 设置已保存 ' + (resp.ai_configured ? '(LLM 模式)' : '(内置引擎)'), 'success');
+    log(`AI 设置已保存: configured=${resp.ai_configured} mode=${resp.ai_mode}`, 'ok');
+  } catch(e) { toast('保存失败: ' + e.message, 'error'); }
+}
+
+async function loadAiStatus() {
+  try {
+    const r = await fetch(BACKEND_URL + '/api/settings/ai');
+    const text = await r.text();
+    // 检查是否返回了 HTML（服务器未启动或报错）
+    if (text.trim().startsWith('<') || !text.trim().startsWith('{')) {
+      console.warn('AI status 返回非 JSON, 跳过');
+      return;
+    }
+    const d = JSON.parse(text);
+    updateAiBadge(d.ai_configured, d.ai_mode);
+    if (d.ai_model) document.getElementById('aiModel').value = d.ai_model;
+    if (d.ai_base_url) document.getElementById('aiBaseUrl').value = d.ai_base_url;
+    if (d.ai_mode) document.getElementById('aiMode').value = d.ai_mode;
+  } catch(e) {
+    console.warn('loadAiStatus error:', e.message);
+  }
+}
+
+function updateAiBadge(configured, mode) {
+  const badge = document.getElementById('aiStatusBadge');
+  const hint = document.getElementById('aiModeHint');
+  if (configured) {
+    badge.textContent = 'LLM 已配置 (' + (mode||'auto') + ')';
+    badge.style.background = 'var(--green)'; badge.style.color = '#fff';
+    hint.textContent = '将使用 LLM 优化：标题 + 简述 + 详述 + 五点特征';
+  } else {
+    badge.textContent = '内置引擎 (' + (mode||'auto') + ')';
+    badge.style.background = '#e2e8f0'; badge.style.color = 'var(--gray)';
+    hint.textContent = '将使用内置引擎优化：标题 + 简述 + 详述 + 五点特征';
+  }
+}
+
+function getAiContext() {
+  return {
+    sku: val('pSku'), title: val('pName'), brand: val('pBrand'),
+    price: val('pPrice'), category: val('pCategory'),
+    short_desc: val('pDesc'), long_desc: val('pLongDesc'),
+    key_features: [val('kf1'), val('kf2'), val('kf3'), val('kf4'), val('kf5')],
+  };
+}
+
+async function callAiOptimize(fields) {
+  const btn = document.getElementById('btnAiAll');
+  if (btn) { btn.disabled = true; btn.innerHTML = '<span class="spinner"></span> AI 优化中...'; }
+  log(`AI 优化请求: fields=[${fields.join(',')}]`, 'info');
+  try {
+    const r = await fetch(BACKEND_URL + '/api/ai/optimize', {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({fields: fields, context: getAiContext(), mode: 'auto'})
+    });
+    const d = await r.json();
+    if (!d.ok) { toast('优化失败: ' + (d.detail || d.error), 'error'); log('AI 优化失败: ' + (d.error||d.detail), 'err'); return null; }
+    // 缓存结果
+    Object.assign(aiResultsCache, d.results);
+    renderAiPreview(d.results, d.notes || []);
+    toast(`AI 优化完成 (${d.mode_used === 'llm' ? 'LLM' : '内置引擎'})`, 'success');
+    log(`AI 优化完成 mode=${d.mode_used}`, 'ok');
+    return d;
+  } catch(e) {
+    toast('优化失败: ' + e.message, 'error');
+    log('AI 优化失败: ' + e.message, 'err');
+    return null;
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = '🤖 一键 AI 优化'; }
+  }
+}
+
+async function aiOptimizeAll() {
+  await callAiOptimize(['title', 'short_desc', 'long_desc', 'key_features']);
+}
+
+async function aiOptimizeField(field) {
+  await callAiOptimize([field]);
+}
+
+function renderAiPreview(results, notes) {
+  const panel = document.getElementById('aiPreviewPanel');
+  const body = document.getElementById('aiPreviewBody');
+  panel.style.display = 'block';
+  let html = '';
+  for (const [field, data] of Object.entries(results)) {
+    const label = FIELD_LABELS[field] || field;
+    html += `<div class="ai-preview-block">`;
+    html += `<div class="ap-field-name">📝 ${label}</div>`;
+    // 原文 vs 优化
+    if (field === 'key_features') {
+      const orig = (data.original || []);
+      const opt = (data.optimized || []);
+      html += `<div class="ap-row"><span class="ap-label">原文:</span><div style="flex:1">`;
+      orig.forEach((o,i) => html += `<div class="ap-orig" style="margin-bottom:2px">${i+1}. ${escHtml(o)}</div>`);
+      html += `</div></div>`;
+      html += `<div class="ap-row"><span class="ap-label">优化:</span><div style="flex:1">`;
+      opt.forEach((o,i) => html += `<div class="ap-opt" style="margin-bottom:2px">${i+1}. ${escHtml(o)}</div>`);
+      html += `</div></div>`;
+    } else {
+      html += `<div class="ap-row"><span class="ap-label">原文:</span><span class="ap-orig">${escHtml(data.original || '')}</span></div>`;
+      html += `<div class="ap-row"><span class="ap-label">优化:</span><span class="ap-opt">${escHtml(data.optimized || '')}</span></div>`;
+    }
+    // 关键词 (仅 title)
+    if (data.keywords && data.keywords.length > 0) {
+      html += `<div class="ap-row"><span class="ap-label">关键词:</span><div class="ap-keywords">`;
+      data.keywords.forEach(k => html += `<span class="ap-kw-tag">${escHtml(k)}</span>`);
+      html += `</div></div>`;
+    }
+    // 应用按钮
+    html += `<div class="ap-actions"><button class="btn btn-success btn-sm" onclick="applyAiField('${field}')">✅ 应用到表单</button></div>`;
+    html += `</div>`;
+  }
+  if (notes.length > 0) {
+    html += `<div class="ap-notes">📌 ${notes.join(' | ')}</div>`;
+  }
+  body.innerHTML = html;
+}
+
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function toggleAiPreview() {
+  const panel = document.getElementById('aiPreviewPanel');
+  panel.style.display = panel.style.display === 'none' ? 'block' : 'none';
+}
+
+function applyAiField(field) {
+  const data = aiResultsCache[field];
+  if (!data || !data.optimized) { toast('无优化数据', 'error'); return; }
+  if (field === 'title') {
+    document.getElementById('pName').value = data.optimized;
+  } else if (field === 'short_desc') {
+    document.getElementById('pDesc').value = data.optimized;
+  } else if (field === 'long_desc') {
+    document.getElementById('pLongDesc').value = data.optimized;
+  } else if (field === 'key_features') {
+    const features = data.optimized || [];
+    for (let i = 0; i < 5; i++) {
+      const el = document.getElementById(`kf${i+1}`);
+      if (el && features[i]) el.value = features[i];
+    }
+  }
+  toast(`${FIELD_LABELS[field] || field} 已应用`, 'success');
+  log(`AI 结果已应用: ${field}`, 'ok');
+}
+
+function applyAllAiResults() {
+  let count = 0;
+  for (const field of Object.keys(aiResultsCache)) {
+    applyAiField(field);
+    count++;
+  }
+  toast(`已应用 ${count} 个字段`, 'success');
+}
+
+// ═══════════════════════════════════════════════════
+// 工具函数
+// ═══════════════════════════════════════════════════
+function val(id) { return document.getElementById(id)?.value || ''; }
+
+function syntaxHighlight(json) {
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+\.?\d*)/g, m => {
+    let cls = 'json-num';
+    if (/^"/.test(m)) cls = /:$/.test(m) ? 'json-key' : 'json-str';
+    else if (/true|false|null/.test(m)) cls = 'json-bool';
+    return `<span class="${cls}">${m}</span>`;
+  });
+}
+
+function copyText(text) {
+  navigator.clipboard.writeText(text).then(() => toast('已复制到剪贴板', 'info'));
+}
+
+function toast(msg, type = 'info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast ' + type + ' show';
+  setTimeout(() => t.classList.remove('show'), 3000);
+}
+
+function markNavDone(step) {
+  const nav = document.getElementById('nav-' + step);
+  if (nav) {
+    nav.parentElement.classList.add('done');
+    nav.innerHTML = '✓';
+  }
+}
+
+function log(msg, lvl = 'info') {
+  const panel = document.getElementById('logPanel');
+  const ts = new Date().toLocaleTimeString('en-US', {hour12:false});
+  const line = document.createElement('div');
+  line.className = 'log-line';
+  line.innerHTML = `<span class="ts">${ts}</span> <span class="lvl-${lvl}">[${lvl.toUpperCase()}]</span> ${msg}`;
+  panel.appendChild(line);
+  panel.scrollTop = panel.scrollHeight;
+}
+
+// ═══════════════════════════════════════════════════
+// 初始化
+// ═══════════════════════════════════════════════════
+window.onload = function() {
+  log('系统就绪 (Demo 模式)', 'info');
+  log('提示: 点击步骤 0 保存设置后开始操作', 'info');
+  initImagePreviews();
+  loadAiStatus();
+};
+</script>
+</body>
+</html>
