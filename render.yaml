@@ -1,0 +1,20 @@
+# Render 部署配置（从 GitHub 仓库一键部署后端）
+# 在 Render 控制台 New → Blueprint → 连接本仓库 即可
+services:
+  - type: web
+    name: walmart-uploader
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: PORT
+        value: 10000
+      - key: WALMART_CLIENT_ID        # 在 Render 环境变量里填写真实值（不进代码）
+        sync: false
+      - key: WALMART_CLIENT_SECRET     # 同上，务必保密
+        sync: false
+      - key: WALMART_PROXY             # 可选，如 http://user:pass@host:port
+        sync: false
+      - key: ALLOWED_ORIGINS           # 可选，限定你的 GitHub Pages 域名，如 https://user.github.io
+        sync: false
