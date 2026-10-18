@@ -808,20 +808,28 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,'PingFang SC
 <!-- Toast -->
 <div class="toast" id="toast"></div>
 
+<!-- Hugging Face Spaces 冷启动提示（仅在 *.hf.space 域名下显示） -->
+<div id="hf-tip" style="display:none;position:fixed;top:0;left:0;right:0;z-index:9999;background:#fff7e6;color:#8a6d3b;font-size:13px;line-height:1.5;padding:8px 14px;text-align:center;border-bottom:1px solid #ffe0a3;">⏳ 本服务托管于 Hugging Face 免费空间，长时间无访问会自动休眠，首次打开需 10~20 秒冷启动，请稍候片刻即可正常使用。</div>
+
 <script>
 // ═══════════════════════════════════════════════════
-// 后端地址配置（部署到 GitHub Pages 时这一处必改）
-//   - 本地 / Codespaces / 同源运行：保持空字符串 "" 即可
-//   - 部署到 GitHub Pages：把下面 onrender.com 换成你的后端地址
-//     （后端部署在 Render / Railway，见 README）
-//   已自动识别 *.github.io 域名并指向后端，无需手动切换。
+// 后端地址配置（绝大多数部署无需改动）
+//   - 本地 / Hugging Face Spaces / 同源运行：保持空字符串 ""，请求走相对路径
+//   - GitHub Pages 前端 + 独立后端：把下面 return "" 改成你的后端地址
+//     （例如后端也部署在 Hugging Face Spaces："https://你的名-walmart-uploader.hf.space"）
 // ═══════════════════════════════════════════════════
 const BACKEND_URL = (function () {
   if (location.hostname.endsWith('github.io')) {
-    return "https://walmart-uploader.onrender.com"; // ← 改成你的 Render / Railway 后端地址
+    return ""; // ← GitHub Pages 时填你的后端地址，例如 "https://xxx.hf.space"
   }
-  return ""; // 本地 / 同源运行
+  return ""; // 本地 / Hugging Face Spaces 同源运行
 })();
+
+// Hugging Face Spaces 免费版冷启动提示
+if (location.hostname.endsWith('hf.space')) {
+  var _hftip = document.getElementById('hf-tip');
+  if (_hftip) _hftip.style.display = 'block';
+}
 
 // ═══════════════════════════════════════════════════
 // 全局状态
