@@ -93,6 +93,29 @@ docker run -d -p 10000:7860 \
 
 ---
 
+## 方案 D：手机零信用卡本地运行（推荐日常用）
+
+云端平台（Render / Hugging Face / Vercel）普遍要信用卡或支付方式验证，可绕开：让工具在你自己的设备上跑，手机直接访问——零成本、零信用卡、密钥留在本地。后端已监听 `0.0.0.0:8765` 并做了 PWA（手机“添加到主屏幕”即全屏 App）。
+
+**D1. 电脑跑后端 + 手机同 WiFi（最快，今天就能用）**
+1. 电脑：`pip install -r requirements.txt` → `python app.py`
+2. 查电脑局域网 IP（如 `192.168.1.20`）
+3. 手机连同一 WiFi，浏览器打开 `http://192.168.1.20:8765`
+4. 浏览器菜单“添加到主屏幕”，得到 App 图标，全屏打开
+
+**D2. 安卓手机 Termux 本地独立运行（无需电脑/云）**
+1. 手机装 Termux（F-Droid / Google Play，免费）
+2. `pkg install python git` → `pip install -r requirements.txt`
+3. 把项目传到 Termux（或 `git clone`），`python app.py`
+4. 手机浏览器打开 `http://localhost:8765` → 添加到主屏幕
+
+**D3. 任意网络访问（电脑常开 + Cloudflare Tunnel，免费无卡）**
+- 电脑跑后端，安装 `cloudflared`，执行 `cloudflared tunnel --url http://localhost:8765` 得到公网 https 地址，手机任意网络可开。
+
+> 国内调用 Walmart API 需在网页“代理”字段填可用代理地址（后端已支持）。
+
+---
+
 ## 安全性说明
 
 - **Client Secret 只存在于后端环境变量 / Space Secrets**，绝不写进前端 HTML 或代码。
