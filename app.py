@@ -966,6 +966,25 @@ async def build_feed(request: Request):
 
 
 # ════════════════════════════════════════════════════════════
+# PWA：让手机可“添加到主屏幕”当作 App 使用
+# ════════════════════════════════════════════════════════════
+@app.get("/manifest.webmanifest")
+async def pwa_manifest():
+    return JSONResponse({
+        "name": "Walmart 上品工具",
+        "short_name": "WM上品",
+        "description": "沃尔玛 Marketplace 商品上架工具（钢化膜/镜头膜）",
+        "start_url": "/",
+        "display": "standalone",
+        "background_color": "#041e42",
+        "theme_color": "#041e42",
+        "icons": [
+            {"src": "/static/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any"}
+        ],
+    })
+
+
+# ════════════════════════════════════════════════════════════
 # 启动
 # ════════════════════════════════════════════════════════════
 if __name__ == "__main__":
